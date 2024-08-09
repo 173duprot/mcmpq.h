@@ -1,60 +1,124 @@
-#include <stdatomic.h>
+#pragma once
+
 #include <stddef.h>
+#include <stdatomic.h>
 #include <string.h>
+#include <stdbool.h>
+#include <stdalign.h>
 
-#define QUEUE_CAPACITY 1024  // Define a fixed capacity
 #define CACHE_LINE_SIZE 64
+#define QUEUE_SIZE 10
+#define ITEM_SIZE sizeof(void *)
 
 typedef struct {
-    _Atomic size_t turn;
-    char storage[];
-} Slot;
+    alignas(CACHE_LINE_SIZE) _Atomic size_t turn;
+    unsigned char storage[ITEM_SIZE];  // Storage for the item
+} slot_t;
 
 typedef struct {
-    size_t capacity;
-    size_t item_size;
-    char pad1[CACHE_LINE_SIZE - sizeof(size_t) * 2];
-    _Atomic size_t head;
-    char pad2[CACHE_LINE_SIZE - sizeof(_Atomic size_t)];
-    _Atomic size_t tail;
-    char pad3[CACHE_LINE_SIZE - sizeof(_Atomic size_t)];
-    Slot slots[QUEUE_CAPACITY];
-} Queue;
+    alignas(CACHE_LINE_SIZE) slot_t slots[QUEUE_SIZE];
+    alignas(CACHE_LINE_SIZE) _Atomic size_t head;
+    alignas(CACHE_LINE_SIZE) _Atomic size_t tail;
+} MPMCQueue;
 
-void queue_init(Queue *queue, size_t item_size) {
-    queue->capacity = QUEUE_CAPACITY;
-    queue->item_size = item_size;
-    atomic_store(&queue->head, 0);
-    atomic_store(&queue->tail, 0);
+// Example queue init
+//
+//     MPMCQueue queue = {
+//         .slots = {0},
+//         .head = 0,
+//         .tail = 0,
+//     };
+//
 
-    // Initialize turns
-    for (size_t i = 0; i < queue->capacity; i++) {
-        atomic_store(&queue->slots[i].turn, i * 2);
-    }
+_Static_assert(alignof(slot_t) == CACHE_LINE_SIZE, "slot_t alignment is incorrect");
+_Static_assert(sizeof(slot_t) % CACHE_LINE_SIZE == 0, "slot_t size is not a multiple of cache line size");
+
+static inline void slot_construct(slot_t *slot, const void *item, size_t item_size) {
+    memcpy(slot->storage, item, item_size);
 }
 
-void queue_emplace(Queue *queue, const void *item) {
+static inline void slot_destroy(slot_t *slot, size_t item_size) {
+    memset(slot->storage, 0, item_size);
+}
+
+static inline void slot_move(slot_t *slot, void *item, size_t item_size) {
+    memcpy(item, slot->storage, item_size);
+    slot_destroy(slot, item_size);
+}
+
+static inline size_t idx(MPMCQueue *queue, size_t i) {
+    return i % QUEUE_SIZE;
+}
+
+static inline size_t turn(MPMCQueue *queue, size_t i) {
+    return i / QUEUE_SIZE;
+}
+
+static inline void enqueue(MPMCQueue *queue, const void *item) {
     size_t head = atomic_fetch_add(&queue->head, 1);
-    size_t slot_index = head % queue->capacity;
-    size_t turn = 2 * (head / queue->capacity);
-
-    while (atomic_load(&queue->slots[slot_index].turn) != turn) {
-        // Spin-wait
+    slot_t *slot = &queue->slots[idx(queue, head)];
+    while (turn(queue, head) * 2 != atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+        // busy-wait
     }
-
-    memcpy(queue->slots[slot_index].storage, item, queue->item_size);
-    atomic_store(&queue->slots[slot_index].turn, turn + 1);
+    slot_construct(slot, item, ITEM_SIZE);
+    atomic_store_explicit(&slot->turn, turn(queue, head) * 2 + 1, memory_order_release);
 }
 
-void queue_pop(Queue *queue, void *item) {
+static inline bool try_enqueue(MPMCQueue *queue, const void *item) {
+    size_t head = atomic_load_explicit(&queue->head, memory_order_acquire);
+    for (;;) {
+        slot_t *slot = &queue->slots[idx(queue, head)];
+        if (turn(queue, head) * 2 == atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+            if (atomic_compare_exchange_strong(&queue->head, &head, head + 1)) {
+                slot_construct(slot, item, ITEM_SIZE);
+                atomic_store_explicit(&slot->turn, turn(queue, head) * 2 + 1, memory_order_release);
+                return true;
+            }
+        } else {
+            size_t prev_head = head;
+            head = atomic_load_explicit(&queue->head, memory_order_acquire);
+            if (head == prev_head) {
+                return false;
+            }
+        }
+    }
+}
+
+static inline void dequeue(MPMCQueue *queue, void *item) {
     size_t tail = atomic_fetch_add(&queue->tail, 1);
-    size_t slot_index = tail % queue->capacity;
-    size_t turn = 2 * (tail / queue->capacity) + 1;
-
-    while (atomic_load(&queue->slots[slot_index].turn) != turn) {
-        // Spin-wait
+    slot_t *slot = &queue->slots[idx(queue, tail)];
+    while (turn(queue, tail) * 2 + 1 != atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+        // busy-wait
     }
-
-    memcpy(item, queue->slots[slot_index].storage, queue->item_size);
-    atomic_store(&queue->slots[slot_index].turn, turn + 1);
+    slot_move(slot, item, ITEM_SIZE);
+    atomic_store_explicit(&slot->turn, turn(queue, tail) * 2 + 2, memory_order_release);
 }
+
+static inline bool try_dequeue(MPMCQueue *queue, void *item) {
+    size_t tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+    for (;;) {
+        slot_t *slot = &queue->slots[idx(queue, tail)];
+        if (turn(queue, tail) * 2 + 1 == atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+            if (atomic_compare_exchange_strong(&queue->tail, &tail, tail + 1)) {
+                slot_move(slot, item, ITEM_SIZE);
+                atomic_store_explicit(&slot->turn, turn(queue, tail) * 2 + 2, memory_order_release);
+                return true;
+            }
+        } else {
+            size_t prev_tail = tail;
+            tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+            if (tail == prev_tail) {
+                return false;
+            }
+        }
+    }
+}
+
+static inline size_t queue_size(MPMCQueue *queue) {
+    return atomic_load_explicit(&queue->head, memory_order_relaxed) - atomic_load_explicit(&queue->tail, memory_order_relaxed);
+}
+
+static inline bool queue_empty(MPMCQueue *queue) {
+    return queue_size(queue) <= 0;
+}
+

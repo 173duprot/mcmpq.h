@@ -1,0 +1,18 @@
+Please utilize the alignas() function to achieve this.
+Delving into the exact memory structure:
+```
+*Each line is the length of the false sharing range.
+
+[capacity]
+[[pad]
+ [turn][T][pad]
+ [turn][T][pad]
+ [turn][T][pad]
+ etc...
+[pad]]
+[pad]
+[head]
+[pad]
+[tail]
+[pad]
+```
