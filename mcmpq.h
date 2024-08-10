@@ -1,5 +1,4 @@
-#ifndef MCMPQ_H
-#define MCMPQ_H
+#pragma once
 
 #include <stddef.h>
 #include <stdatomic.h>
@@ -130,6 +129,3 @@ static inline size_t queue_size(queue_t *queue) {
 static inline bool queue_empty(queue_t *queue) {
     return queue_size(queue) == 0;
 }
-
-#endif // MCMPQ_H
-
