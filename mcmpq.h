@@ -7,9 +7,10 @@
 #include <stdbool.h>
 #include <stdalign.h>
 
-#define CACHE_LINE_SIZE 64
 #define QUEUE_SIZE 10
-#define ITEM_SIZE sizeof(CACHE_LINE_SIZE -  sizeof(size_t))
+
+#define CACHE_LINE_SIZE 64
+#define ITEM_SIZE (CACHE_LINE_SIZE - sizeof(size_t))
 
 typedef struct {
     alignas(CACHE_LINE_SIZE) _Atomic size_t turn;

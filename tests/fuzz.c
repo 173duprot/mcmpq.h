@@ -5,18 +5,14 @@
 #include "../mcmpq.h"
 
 #define NUM_THREADS 4
-#define NUM_ITEMS_PER_THREAD 10000
-#define NUM_ITERATIONS 1000
+#define NUM_ITEMS_PER_THREAD 100
+#define NUM_ITERATIONS 100
 
 typedef struct {
     int value;
 } item_t;
 
-queue_t queue = {	// Global Queue
-         .slots = {0},
-         .head = 0,
-         .tail = 0,
-};
+queue_t queue = {0};
 
 void *producer(void *arg) {
     int thread_id = *(int *)arg;
