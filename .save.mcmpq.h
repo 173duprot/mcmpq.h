@@ -13,7 +13,7 @@
 
 typedef struct {
     alignas(CACHE_LINE_SIZE) _Atomic size_t turn;
-    _Atomic unsigned char storage[ITEM_SIZE];  // Storage for the item as atomic
+    alignas(CACHE_LINE_SIZE) _Atomic unsigned char storage[ITEM_SIZE];  // Storage for the item as atomic
 } slot_t;
 
 typedef struct {
