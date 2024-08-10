@@ -29,11 +29,7 @@ typedef struct {
 
 // Example queue init
 //
-//     queue_t queue = {
-//         .slots = {0},
-//         .head = 0,
-//         .tail = 0,
-//     };
+//     queue_t queue = {0}
 //
 
 _Static_assert(alignof(slot_t) == CACHE_LINE_SIZE, "slot_t alignment is incorrect");
