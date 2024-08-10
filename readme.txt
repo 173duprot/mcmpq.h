@@ -73,7 +73,7 @@ CONSTANTS
         Number of slots in the queue (10).
 
     ITEM_SIZE
-        Size of each item in the queue (rest of the cache line).
+        Size of each item in the queue (56). (^on x86-64)
 
     CACHE_LINE_SIZE
         Cache line size for alignment (64 bytes).
