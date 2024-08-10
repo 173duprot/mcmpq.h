@@ -26,7 +26,7 @@ SYNOPSIS
 
     typedef struct {
         _Atomic size_t turn;
-        unsigned char storage[ITEM_SIZE];
+        _Atomic unsigned char storage[ITEM_SIZE];
     } slot_t;
 
     typedef struct {
