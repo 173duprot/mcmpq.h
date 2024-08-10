@@ -7,9 +7,9 @@
 #include <stdbool.h>
 #include <stdalign.h>
 
-#define CACHE_LINE_SIZE 64
 #define QUEUE_SIZE 10
-#define ITEM_SIZE sizeof(void *)
+#define CACHE_LINE_SIZE 64
+#define ITEM_SIZE (CACHE_LINE_SIZE - sizeof(size_t))
 
 typedef struct {
     alignas(CACHE_LINE_SIZE) _Atomic size_t turn;
@@ -24,11 +24,7 @@ typedef struct {
 
 // Example queue init
 //
-//     queue_t queue = {
-//         .slots = {0},
-//         .head = 0,
-//         .tail = 0,
-//     };
+//     queue_t queue = {0}
 //
 
 _Static_assert(alignof(slot_t) == CACHE_LINE_SIZE, "slot_t alignment is incorrect");
