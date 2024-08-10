@@ -2,16 +2,20 @@
 #include <pthread.h>
 #include <assert.h>
 #include <string.h>
-#include "mcmpq.h"
+#include "../mcmpq.h"
 
-#define NUM_THREADS 4
-#define NUM_ITEMS_PER_THREAD 100
+#define NUM_THREADS 8
+#define NUM_ITEMS_PER_THREAD 1000
 
 typedef struct {
     int value;
 } Item;
 
-MPMCQueue queue;
+queue_t queue = {
+    .slots = {0},
+    .head = 0,
+    .tail = 0,
+};
 
 void *producer(void *arg) {
     int thread_id = *(int *)arg;
@@ -34,13 +38,8 @@ void *consumer(void *arg) {
     return NULL;
 }
 
-int main() {
+int main(void) {
 
-    MPMCQueue queue = {
-        .slots = {0},
-        .head = 0,
-        .tail = 0,
-    };
 
     pthread_t producers[NUM_THREADS], consumers[NUM_THREADS];
     int thread_ids[NUM_THREADS];
