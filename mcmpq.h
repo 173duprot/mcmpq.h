@@ -1,11 +1,6 @@
 #ifndef MCMPQ_H
 #define MCMPQ_H
 
-#pragma clang optimize off
-#pragma GCC push_options
-#pragma GCC optimize ("-O0")
-// If your not using gcc or clang, please put code to stop optimization here.
-
 #include <stddef.h>
 #include <stdatomic.h>
 #include <string.h>
@@ -131,9 +126,6 @@ static inline size_t queue_size(queue_t *queue) {
 static inline bool queue_empty(queue_t *queue) {
     return queue_size(queue) == 0;
 }
-
-#pragma GCC pop_options
-#pragma clang optimize on
 
 #endif // MCMPQ_H
 
