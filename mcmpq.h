@@ -8,12 +8,12 @@
 
 #define CACHE_LINE_SIZE 64
 #define QUEUE_SIZE 10
-#define ITEM_SIZE sizeof(void *)
+#define ITEM_SIZE sizeof(int)
 
 typedef struct {
-    alignas(CACHE_LINE_SIZE) _Atomic size_t turn;
-    _Atomic unsigned char storage[ITEM_SIZE];  // Storage for the item as atomic
-} slot_t;
+     alignas(CACHE_LINE_SIZE) _Atomic size_t turn;
+     unsigned char storage[ITEM_SIZE];
+ } slot_t;
 
 typedef struct {
     alignas(CACHE_LINE_SIZE) slot_t slots[QUEUE_SIZE];
@@ -34,16 +34,12 @@ _Static_assert(alignof(slot_t) == CACHE_LINE_SIZE, "slot_t alignment is incorrec
 _Static_assert(sizeof(slot_t) % CACHE_LINE_SIZE == 0, "slot_t size is not a multiple of cache line size");
 
 static inline void slot_construct(slot_t *slot, const void *item, size_t item_size) {
-    for (size_t i = 0; i < item_size; i++) {
-        atomic_store_explicit(&slot->storage[i], ((unsigned char *)item)[i], memory_order_release);
-    }
-}
+     memcpy(slot->storage, item, item_size);
+ }
 
-static inline void slot_move(slot_t *slot, void *item, size_t item_size) {
-    for (size_t i = 0; i < item_size; i++) {
-        ((unsigned char *)item)[i] = atomic_load_explicit(&slot->storage[i], memory_order_acquire);
-    }
-}
+ static inline void slot_move(slot_t *slot, void *item, size_t item_size) {
+     memcpy(item, slot->storage, item_size);
+ }
 
 static inline size_t idx(size_t i) {
     return i % QUEUE_SIZE;
