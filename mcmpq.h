@@ -39,17 +39,10 @@ static inline void slot_construct(slot_t *slot, const void *item, size_t item_si
     }
 }
 
-static inline void slot_destroy(slot_t *slot, size_t item_size) {
-    for (size_t i = 0; i < item_size; i++) {
-        atomic_store_explicit(&slot->storage[i], 0, memory_order_release);
-    }
-}
-
 static inline void slot_move(slot_t *slot, void *item, size_t item_size) {
     for (size_t i = 0; i < item_size; i++) {
         ((unsigned char *)item)[i] = atomic_load_explicit(&slot->storage[i], memory_order_acquire);
     }
-    slot_destroy(slot, item_size);
 }
 
 static inline size_t idx(size_t i) {
