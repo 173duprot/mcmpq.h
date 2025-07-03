@@ -56,7 +56,8 @@ int main(void) {
         pthread_join(consumers[i], NULL);
     }
 
-    assert(queue_empty(&queue));
+    // Check that the global queue is empty
+    assert(HEAD(&queue) - TAIL(&queue) == 0);
     printf("Test completed successfully. Queue is empty.\n");
 
     return 0;

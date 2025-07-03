@@ -5,8 +5,8 @@
 #include "../mcmpq.h"
 
 #define NUM_THREADS 4
-#define NUM_ITEMS_PER_THREAD 100
-#define NUM_ITERATIONS 100
+#define NUM_ITEMS_PER_THREAD 10000
+#define NUM_ITERATIONS 1000
 
 typedef struct {
     int value;
@@ -53,7 +53,7 @@ int fuzz_test(void) {
     }
 
     // Check that the global queue is empty
-    assert(queue_empty(&queue));
+    assert(HEAD(&queue) - TAIL(&queue) == 0);
 
     return 0;
 }
