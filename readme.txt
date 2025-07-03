@@ -30,53 +30,48 @@ SYNOPSIS
     } slot_t;
 
     typedef struct {
-        slot_t slots[QUEUE_SIZE];
         _Atomic size_t head;
         _Atomic size_t tail;
-    } MPMCQueue;
+        slot_t slots[QUEUE_SIZE];
+    } queue_t;
 
-    void enqueue(MPMCQueue *queue, const void *item);
-    bool try_enqueue(MPMCQueue *queue, const void *item);
-    void dequeue(MPMCQueue *queue, void *item);
-    bool try_dequeue(MPMCQueue *queue, void *item);
-    size_t queue_size(MPMCQueue *queue);
-    bool queue_empty(MPMCQueue *queue);
+    void enqueue(queue_t *queue, const void *item);
+    bool try_enqueue(queue_t *queue, const void *item);
+    void dequeue(queue_t *queue, void *item);
+    bool try_dequeue(queue_t *queue, void *item);
 
 FUNCTIONS
-    void enqueue(MPMCQueue *queue, const void *item)
+    void enqueue(queue_t *queue, const void *item)
         Enqueues an item to the queue. This function
         will busy-wait if the queue is full.
 
-    bool try_enqueue(MPMCQueue *queue, const void *item)
+    bool try_enqueue(queue_t *queue, const void *item)
         Attempts to enqueue an item to the queue without
         busy-waiting. Returns true on success or false if
         the queue is full.
 
-    void dequeue(MPMCQueue *queue, void *item)
+    void dequeue(queue_t *queue, void *item)
         Dequeues an item from the queue. This function
         will busy-wait if the queue is empty.
 
-    bool try_dequeue(MPMCQueue *queue, void *item)
+    bool try_dequeue(queue_t *queue, void *item)
         Attempts to dequeue an item from the queue without
         busy-waiting. Returns true on success or false if
         the queue is empty.
 
-    size_t queue_size(MPMCQueue *queue)
-        Returns the current number of items in the queue.
-
-    bool queue_empty(MPMCQueue *queue)
-        Checks if the queue is empty. Returns true if the
-        queue is empty, false otherwise.
-
 CONSTANTS
-    QUEUE_SIZE
+    SLOT
+        Size of each slot in the queue (int).
+
+    SLOTS
         Number of slots in the queue (10).
 
-    ITEM_SIZE
-        Size of each item in the queue (56). (^on x86-64)
+MACROS
+    HEAD(*queue_t)
+        Safely accesses the head value.
 
-    CACHE_LINE_SIZE
-        Cache line size for alignment (64 bytes).
+    TAIL(*queue_t)
+        Safely accesses the tail value.
 
 AUTHOR
     173duprot <https://github.com/173duprot>

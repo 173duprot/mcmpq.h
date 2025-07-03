@@ -12,6 +12,7 @@
 #define TAIL(q) atomic_load_explicit(&(q)->tail, memory_order_acquire)
 
 typedef struct {
+     alignas(CACHE_LINE)
      _Atomic size_t turn;
      unsigned char data[SLOT];
 } slot_t;
