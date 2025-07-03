@@ -37,3 +37,43 @@ static inline void dequeue(queue_t *queue, void *item) {
     memcpy(item, slot->data, SLOT);
     atomic_store_explicit(&slot->turn, (tail / SLOTS) * 2 + 2, memory_order_release);
 }
+
+static inline bool try_enqueue(queue_t *queue, const void *item) {
+    size_t head = atomic_load_explicit(&queue->head, memory_order_acquire);
+    for (;;) {
+        slot_t *slot = &queue->slots[head % SLOTS];
+        if ((head / SLOTS) * 2 == atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+            if (atomic_compare_exchange_strong_explicit(&queue->head, &head, head + 1, memory_order_acq_rel, memory_order_acquire)) {
+                memcpy(slot->data, item, SLOT);
+                atomic_store_explicit(&slot->turn, (head / SLOTS) * 2 + 1, memory_order_release);
+                return true;
+            }
+        } else {
+            size_t prev_head = head;
+            head = atomic_load_explicit(&queue->head, memory_order_acquire);
+            if (head == prev_head) {
+                return false;
+            }
+        }
+    }
+}
+
+static inline bool try_dequeue(queue_t *queue, void *item) {
+    size_t tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+    for (;;) {
+        slot_t *slot = &queue->slots[tail % SLOTS];
+        if ((tail / SLOTS) * 2 + 1 == atomic_load_explicit(&slot->turn, memory_order_acquire)) {
+            if (atomic_compare_exchange_strong_explicit(&queue->tail, &tail, tail + 1, memory_order_acq_rel, memory_order_acquire)) {
+                memcpy(item, slot->data, SLOT);
+                atomic_store_explicit(&slot->turn, (tail / SLOTS) * 2 + 2, memory_order_release);
+                return true;
+            }
+        } else {
+            size_t prev_tail = tail;
+            tail = atomic_load_explicit(&queue->tail, memory_order_acquire);
+            if (tail == prev_tail) {
+                return false;
+            }
+        }
+    }
+}
