@@ -18,8 +18,8 @@ DESCRIPTION
 
         Enqueueing items to the queue,
         Dequeueing items from the queue,
-        Checking the size of the queue,
-        Checking if the queue is empty.
+        Safely accessing the head value.
+        Safely accessing the tail value.
 
 SYNOPSIS
     #include "mcmpq.h"
